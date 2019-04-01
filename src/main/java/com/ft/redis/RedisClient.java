@@ -54,8 +54,7 @@ public class RedisClient {
     //释放redis资源
     @SuppressWarnings("deprecation")
     public synchronized static void releaseConn(Jedis jedis){
-        if (jedisPool!=null)
-        {
+        if (jedisPool!=null) {
             jedisPool.close();//.returnResource(jedis);
         }
     }

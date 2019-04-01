@@ -1,10 +1,7 @@
 package com.ft.redis;
 
 import org.junit.Test;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.ListPosition;
-import redis.clients.jedis.Transaction;
-import redis.clients.jedis.Tuple;
+import redis.clients.jedis.*;
 
 import java.util.*;
 
@@ -176,7 +173,7 @@ public class TestJedis {
     }
 
     @Test
-    public static void operateSet(){
+    public void operateSet(){
         Jedis jedis=RedisClient.getJedis();
         try
         {
@@ -237,7 +234,7 @@ public class TestJedis {
     }
 
     @Test
-    public static void operateSortedSet(){
+    public void operateSortedSet(){
         Jedis jedis=RedisClient.getJedis();
         try
         {
@@ -303,7 +300,7 @@ public class TestJedis {
      * 如果是Java语法错误比如被零除，就进入catch异常处理段，执行Jedis的discard()方法回滚所有事务
      * @see
      */
-    public static void jedisTransaction(){
+    public void jedisTransaction(){
         Jedis jedis=RedisClient.getJedis();
         //开始事务，在执行exec之前都属于事务范围内
         Transaction tx=jedis.multi();
@@ -339,6 +336,48 @@ public class TestJedis {
                 tx.exec();
             }
             RedisClient.releaseConn(jedis);
+        }
+    }
+
+    public static class MyJedisPubSub extends JedisPubSub {
+        @Override
+        public void onMessage(String channel, String message) {
+            System.out.println("onMessage " + channel + ", " + message);
+        }
+
+        @Override
+        public void onSubscribe(String channel, int subscribedChannels) {
+            System.out.println("onSubscribe " + channel + ", " + subscribedChannels);
+        }
+
+        @Override
+        public void onUnsubscribe(String channel, int subscribedChannels) {
+            System.out.println("onUnsubscribe " + channel + ", " + subscribedChannels);
+        }
+    }
+
+    @Test
+    public void testPublish() {
+        new Thread(()->{
+            Jedis jedis = RedisClient.getJedis();
+            for (int i=0; i<10; i++) {
+                jedis.publish("pool1", "pool1 message " + i);
+                jedis.publish("pool2", "pool2 message " + i*2);
+            }
+        }).start();
+
+        new Thread(()->{
+            Jedis jedis = RedisClient.getJedis();
+            JedisPubSub mypubsub = new MyJedisPubSub();
+            for (int i=0; i<10; i++) {
+                jedis.subscribe(mypubsub, "pool1", "pool2");
+            }
+        }).start();
+
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 }
